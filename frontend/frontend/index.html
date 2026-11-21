@@ -1,44 +1,38 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPT Decoder-Only Transformer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
             background: #f4f6f9;
+        }
+        header {
+            background: #202938;
+            color: white;
             text-align: center;
-            padding: 25px;
+            padding: 22px;
         }
-
-        h1 {
-            color: #243b64;
-        }
-
-        p {
-            color: #555;
-        }
-
         iframe {
             width: 100%;
-            max-width: 900px;
-            height: 650px;
+            height: 85vh;
             border: none;
-            border-radius: 10px;
-            background: white;
         }
     </style>
 </head>
 <body>
-
-    <h1>GPT Decoder-Only Transformer</h1>
-
-    <p>Enter text and predict the next character using our trained GPT model.</p>
+    <header>
+        <h1>GPT Decoder-Only Transformer</h1>
+        <p>Next Character Prediction</p>
+    </header>
 
     <iframe
-        src="https://8a4dc96e6e7176cf0d.gradio.live">
+        src="https://be24455f24df58c815.gradio.live"
+        allow="clipboard-read; clipboard-write">
     </iframe>
-
 </body>
 </html>
