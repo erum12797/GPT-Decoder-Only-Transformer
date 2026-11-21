@@ -1,57 +1,96 @@
 
-import json
+import os
 import torch
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from model import GPTLanguageModel
 
 app = FastAPI(title="GPT Next Character Prediction API")
 
-# Load tokenizer
-with open("tokenizer.json", "r", encoding="utf-8") as f:
-    tokenizer = json.load(f)
+# Allow the Vercel frontend to communicate with this API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-stoi = tokenizer["stoi"]
-itos = {int(k): v for k, v in tokenizer["itos"].items()}
+# Find trained checkpoint
+BASE_DIR = Path(__file__).resolve().parent
+checkpoint_path = os.getenv(
+    "CHECKPOINT_PATH",
+    str(BASE_DIR / "gpt_decoder_model.pt")
+)
+
+if not os.path.exists(checkpoint_path):
+    raise FileNotFoundError("GPT checkpoint file not found.")
 
 # Load trained model
+device = "cpu"
+
 checkpoint = torch.load(
-    "gpt_decoder_model.pt",
-    map_location="cpu",
+    checkpoint_path,
+    map_location=device,
     weights_only=False
 )
 
-config = checkpoint["config"]
+config = checkpoint["model_config"]
+
 model = GPTLanguageModel(**config)
 model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
+
+# Load tokenizer directly from checkpoint
+stoi = {
+    str(k): int(v)
+    for k, v in checkpoint["stoi"].items()
+}
+
+itos = {
+    int(k): str(v)
+    for k, v in checkpoint["itos"].items()
+}
 
 class PredictionRequest(BaseModel):
     text: str
 
 @app.get("/")
 def home():
-    return {"message": "GPT API is running"}
+    return {"message": "GPT API is running successfully"}
 
 @app.post("/predict")
 def predict(request: PredictionRequest):
+
     text = request.text
 
+    if not text:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter some text."
+        )
+
     unknown = [ch for ch in text if ch not in stoi]
+
     if unknown:
         raise HTTPException(
             status_code=400,
-            detail="Input contains characters not in the training vocabulary."
+            detail="Input contains characters outside the training vocabulary."
         )
 
-    input_ids = torch.tensor(
-        [[stoi[ch] for ch in text]],
+    input_ids = [stoi[ch] for ch in text]
+    input_ids = input_ids[-config["block_size"]:]
+
+    input_tensor = torch.tensor(
+        [input_ids],
         dtype=torch.long
     )
 
     with torch.no_grad():
-        logits = model(input_ids)
-        next_id = int(torch.argmax(logits[0, -1]).item())
+        logits = model(input_tensor)
+        next_id = int(logits[0, -1].argmax().item())
 
     return {
         "input": text,
