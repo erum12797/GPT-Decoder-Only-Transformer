@@ -1,3 +1,2 @@
-torch
-fastapi
-uvicorn
+
+# No Python packages needed for the static frontend
